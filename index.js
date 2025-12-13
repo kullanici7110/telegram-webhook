@@ -6,7 +6,9 @@ app.use(express.json());
 app.post("/webhook", async (req, res) => {
   try {
     const data = req.body;
-    console.log("GELEN VERİ (JSON):", JSON.stringify(data));
+
+    // Console log için düzenli JSON
+    console.log("GELEN VERİ (JSON):", JSON.stringify(data, null, 2));
 
     const adminChatId = process.env.ADMIN_CHAT_ID;
     const botToken = process.env.BOT_TOKEN;
@@ -16,8 +18,22 @@ app.post("/webhook", async (req, res) => {
       return res.send("OK");
     }
 
-    const logText = JSON.stringify(data);
+    // Sadece önemli alanları alıp yeni obje oluştur
+    const { metadata, me, payload, event, timestamp, environment } = data;
 
+    const filteredData = {
+      event,
+      timestamp,
+      user: metadata,
+      me,
+      message: payload,
+      environment,
+    };
+
+    // Düzenli JSON string
+    const logText = JSON.stringify(filteredData, null, 2);
+
+    // Telegram'a Markdown kod bloğu olarak gönder
     const response = await fetch(
       `https://api.telegram.org/bot${botToken}/sendMessage`,
       {
@@ -26,8 +42,8 @@ app.post("/webhook", async (req, res) => {
         body: JSON.stringify({
           chat_id: adminChatId,
           text: "```\n" + logText.slice(0, 4000) + "\n```",
-          parse_mode: "Markdown"
-        })
+          parse_mode: "Markdown",
+        }),
       }
     );
 
