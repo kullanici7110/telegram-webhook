@@ -26,14 +26,26 @@ app.post("/webhook", async (req, res) => {
         body: JSON.stringify({
           chat_id: adminChatId,
           text: "```\n" + logText.slice(0, 4000) + "\n```",
-          parse_mode: "Markdown"
+          parse_mode: "Markdown",
         }),
       }
     );
 
     if (!response.ok) {
-      console.error("Telegram gönderim hatası:", await response.text());
+      const errorText = await response.text();  // önce değişkene al
+      console.error("Telegram gönderim hatası:", errorText);
     }
+
+    res.send("OK");
+  } catch (err) {
+    console.error("Webhook işlem hatası:", err);
+    res.status(500).send("Hata");
+  }
+});
+
+app.listen(process.env.PORT || 3000, () =>
+  console.log("Server çalıştı:", process.env.PORT || 3000)
+);
 
     res.send("OK");
   } catch (err) {
