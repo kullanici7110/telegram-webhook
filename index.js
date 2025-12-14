@@ -18,22 +18,52 @@ app.post("/webhook", async (req, res) => {
       return res.send("OK");
     }
 
-    // Sadece önemli alanları alıp yeni obje oluştur
-    const { metadata, me, payload, event, timestamp, environment } = data;
+    // Senin JSON yapına birebir
+    const { metadata, me, message, event, timestamp, environment } = data;
 
     const filteredData = {
       event,
       timestamp,
       user: metadata,
       me,
-      message: payload,
+      message,
       environment,
     };
 
-    // Düzenli JSON string
+    // --------------------------------------------------
+    // ✅ WAWP / WhatsApp TETİKLEYİCİ (KILDIM)
+    // --------------------------------------------------
+    if (message && message.body) {
+
+      const text = message.body.toLowerCase().trim();
+      const from = message.from;
+
+      // 🔒 Kendi gönderdiğimiz mesajlara cevap verme
+      if (message.fromMe === true) {
+        return res.send("OK");
+      }
+
+      // 🎯 Tetikleyici
+      if (text === "kıldım" || text.includes("kıldım")) {
+
+        await fetch("https://app.wawp.net/api/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            number: from,
+            type: "text",
+            message: "Allah kabul etsin 🤲",
+            instance_id: process.env.WAWP_INSTANCE_ID,
+            access_token: process.env.WAWP_TOKEN
+          })
+        });
+      }
+    }
+    // --------------------------------------------------
+
+    // Telegram'a log gönder (AYNI KALDI)
     const logText = JSON.stringify(filteredData, null, 2);
 
-    // Telegram'a Markdown kod bloğu olarak gönder
     const response = await fetch(
       `https://api.telegram.org/bot${botToken}/sendMessage`,
       {
