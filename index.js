@@ -9,7 +9,7 @@ app.post("/webhook", async (req, res) => {
 
   try {
     // =====================================================
-    // ✅ WHATSAPP AUTO REPLY + ANLIK STATUS
+    // ✅ SADECE MESSAGE.ANY
     // =====================================================
     if (
       body.event === "message.any" &&
@@ -18,9 +18,34 @@ app.post("/webhook", async (req, res) => {
       body.payload.fromMe === false
     ) {
       const text = body.payload.body.toLowerCase().trim();
-      const from = body.payload.from;
 
       if (text.includes("kıldım")) {
+        // ===============================
+        // chatId ÇÖZÜMÜ
+        // ===============================
+        const rawFrom = body.payload.from;
+        const senderAlt = body.payload._data?.Info?.SenderAlt;
+
+        let chatId = null;
+
+        if (senderAlt && senderAlt.endsWith("@s.whatsapp.net")) {
+          chatId = senderAlt.replace("@s.whatsapp.net", "@c.us");
+        } else if (
+          rawFrom.endsWith("@c.us") ||
+          rawFrom.endsWith("@g.us")
+        ) {
+          chatId = rawFrom;
+        }
+
+        if (!chatId) {
+          console.log("❌ GEÇERSİZ chatId, gönderilmedi");
+          res.send("OK");
+          return;
+        }
+
+        // ===============================
+        // WAWP SEND
+        // ===============================
         let statusCode = "NO_RESPONSE";
         let responseBody = "";
 
@@ -29,7 +54,7 @@ app.post("/webhook", async (req, res) => {
             "https://wawp.net/wp-json/awp/v1/send" +
             `?instance_id=${process.env.WAWP_INSTANCE_ID}` +
             `&access_token=${process.env.WAWP_TOKEN}` +
-            `&chatId=${encodeURIComponent(from)}` +
+            `&chatId=${encodeURIComponent(chatId)}` +
             `&message=${encodeURIComponent("Allah kabul etsin 🤲")}`;
 
           const resp = await fetch(url, { method: "POST" });
@@ -37,17 +62,15 @@ app.post("/webhook", async (req, res) => {
           statusCode = resp.status;
           responseBody = await resp.text();
 
-          console.log("WAWP STATUS:", statusCode);
-          console.log("WAWP RESPONSE:", responseBody);
-
+          console.log("✅ WAWP STATUS:", statusCode);
         } catch (err) {
           statusCode = "FETCH_ERROR";
           responseBody = err.message;
-          console.error("WAWP FETCH ERROR:", err.message);
+          console.error("❌ FETCH ERROR:", err.message);
         }
 
         // ===============================
-        // Telegram'a SADECE STATUS
+        // TELEGRAM STATUS (ANLIK)
         // ===============================
         if (process.env.ADMIN_CHAT_ID && process.env.BOT_TOKEN) {
           await fetch(
@@ -61,6 +84,7 @@ app.post("/webhook", async (req, res) => {
                   `🟢 AUTO REPLY STATUS\n\n` +
                   `Mesaj: "kıldım"\n` +
                   `Gönderilen: Allah kabul etsin 🤲\n\n` +
+                  `chatId: ${chatId}\n` +
                   `HTTP Status: ${statusCode}\n` +
                   `Response:\n${responseBody}`
               })
@@ -69,7 +93,6 @@ app.post("/webhook", async (req, res) => {
         }
       }
     }
-    // =====================================================
 
     res.send("OK");
   } catch (err) {
