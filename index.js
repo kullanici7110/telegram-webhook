@@ -1,11 +1,12 @@
 // index.js
-// Mevcut Telegram loglama korunur + WhatsApp "selam" → "selam" otomatik cevap eklenmiştir
-// CommonJS uyumlu (Render / Node 22 sorunsuz)
+// Render + Node.js v22 uyumlu
+// Telegram log + WhatsApp "selam" -> "selam"
+// await HATASI YOK (async fonksiyon içinde)
 
 const express = require("express");
 const app = express();
 
-// CommonJS için fetch
+// CommonJS fetch
 const fetch = (...args) => import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
 app.use(express.json());
@@ -16,11 +17,11 @@ const PORT = process.env.PORT || 3000;
 const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
 const BOT_TOKEN = process.env.BOT_TOKEN;
 
-// WAWP (WhatsApp)
+// WAWP WhatsApp
 const INSTANCE_ID = process.env.INSTANCE_ID;
 const ACCESS_TOKEN = process.env.ACCESS_TOKEN;
 
-// WhatsApp mesaj gönderme
+// WhatsApp mesaj gönderme (async FONKSİYON)
 async function sendWhatsApp(chatId, message) {
   const res = await fetch("https://wawp.net/wp-json/awp/v1/send", {
     method: "POST",
@@ -36,13 +37,14 @@ async function sendWhatsApp(chatId, message) {
   return res.status;
 }
 
+// Webhook handler (ASYNC)
 app.post("/webhook", async (req, res) => {
   try {
     const data = req.body;
 
-    console.log("GELEN VERİ (JSON):", JSON.stringify(data, null, 2));
+    console.log("GELEN VERİ:", JSON.stringify(data, null, 2));
 
-    /* ---------------- TELEGRAM LOG ---------------- */
+    /* -------- TELEGRAM LOG -------- */
     if (ADMIN_CHAT_ID && BOT_TOKEN) {
       const { metadata, me, payload, event, timestamp, environment } = data;
 
@@ -64,6 +66,33 @@ app.post("/webhook", async (req, res) => {
           chat_id: ADMIN_CHAT_ID,
           text: "```\n" + logText.slice(0, 4000) + "\n```",
           parse_mode: "Markdown",
+        }),
+      });
+    }
+
+    /* -------- WHATSAPP AUTO REPLY -------- */
+    if (data && data.message && data.message.fromMe === false) {
+      const text = String(data.message.body || "").toLowerCase().trim();
+      const fromChatId = data.message.from;
+
+      if (text === "kıldım" && INSTANCE_ID && ACCESS_TOKEN) {
+        // await ASYNC handler içinde -> HATA YOK
+        await sendWhatsApp(fromChatId, "Allah kabul etsin.");
+      }
+    }
+
+    res.send("OK");
+  } catch (err) {
+    console.error("Webhook hata:", err);
+    res.status(500).send("ERR");
+  }
+});
+
+app.get("/", (req, res) => res.send("OK"));
+
+app.listen(PORT, () => {
+  console.log("Server çalışıyor:", PORT);
+});          parse_mode: "Markdown",
         }),
       });
     }
