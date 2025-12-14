@@ -8,10 +8,8 @@ app.post("/webhook", async (req, res) => {
   const body = req.body;
 
   try {
-    console.log("EVENT:", body.event);
-
     // =====================================================
-    // ✅ WHATSAPP AUTO REPLY + ANLIK STATUS (BAĞIMSIZ)
+    // ✅ WHATSAPP AUTO REPLY + ANLIK STATUS
     // =====================================================
     if (
       body.event === "message.any" &&
@@ -27,17 +25,14 @@ app.post("/webhook", async (req, res) => {
         let responseBody = "";
 
         try {
-          const resp = await fetch("https://app.wawp.net/api/send", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              number: from,
-              type: "text",
-              message: "Allah kabul etsin 🤲",
-              instance_id: process.env.WAWP_INSTANCE_ID,
-              access_token: process.env.WAWP_TOKEN
-            })
-          });
+          const url =
+            "https://wawp.net/wp-json/awp/v1/send" +
+            `?instance_id=${process.env.WAWP_INSTANCE_ID}` +
+            `&access_token=${process.env.WAWP_TOKEN}` +
+            `&chatId=${encodeURIComponent(from)}` +
+            `&message=${encodeURIComponent("Allah kabul etsin 🤲")}`;
+
+          const resp = await fetch(url, { method: "POST" });
 
           statusCode = resp.status;
           responseBody = await resp.text();
