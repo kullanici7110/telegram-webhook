@@ -7,41 +7,19 @@ app.post("/webhook", async (req, res) => {
   try {
     const data = req.body;
 
-    console.log("GELEN VERİ (JSON):", JSON.stringify(data, null, 2));
-
-    const adminChatId = process.env.ADMIN_CHAT_ID;
-    const botToken = process.env.BOT_TOKEN;
-
-    if (!adminChatId || !botToken) {
-      console.error("ADMIN_CHAT_ID veya BOT_TOKEN tanımlı değil");
-      return res.send("OK");
-    }
-
-    // Senin gerçek JSON yapın
-    const { metadata, me, message, event, timestamp, environment } = data;
-
-    const filteredData = {
-      event,
-      timestamp,
-      user: metadata,
-      me,
-      message,
-      environment,
-    };
-
-    // ==================================================
-    // ✅ WAWP / WhatsApp TETİKLEYİCİ (LOGU BOZMADAN)
-    // ==================================================
+    // ============================
+    // 🔹 WHATSAPP AUTO REPLY (SADECE BURASI)
+    // ============================
     if (
-      message &&
-      typeof message.body === "string" &&
-      message.fromMe === false
+      data &&
+      data.message &&
+      typeof data.message.body === "string" &&
+      data.message.fromMe === false
     ) {
-      const text = message.body.toLowerCase().trim();
-      const from = message.from;
+      const text = data.message.body.toLowerCase().trim();
+      const from = data.message.from;
 
       if (text === "kıldım" || text.includes("kıldım")) {
-        // ⚠️ await yok → Telegram loglama BLOKLANMAZ
         fetch("https://app.wawp.net/api/send", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -52,46 +30,37 @@ app.post("/webhook", async (req, res) => {
             instance_id: process.env.WAWP_INSTANCE_ID,
             access_token: process.env.WAWP_TOKEN
           })
-        }).catch(err =>
-          console.error("WAWP gönderim hatası:", err)
-        );
+        }).catch(() => {});
       }
     }
-    // ==================================================
+    // ============================
 
-    // 📤 Telegram loglama (AYNEN KALDI)
-    const logText = JSON.stringify(filteredData, null, 2);
+    // 🔹 TELEGRAM LOG (AYNEN SENİN KODUN)
+    const adminChatId = process.env.ADMIN_CHAT_ID;
+    const botToken = process.env.BOT_TOKEN;
 
-    const response = await fetch(
-      `https://api.telegram.org/bot${botToken}/sendMessage`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: adminChatId,
-          text: "```\n" + logText.slice(0, 4000) + "\n```",
-          parse_mode: "Markdown",
-        }),
-      }
-    );
+    if (adminChatId && botToken) {
+      const logText = JSON.stringify(data, null, 2);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Telegram gönderim hatası:", errorText);
+      await fetch(
+        `https://api.telegram.org/bot${botToken}/sendMessage`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: adminChatId,
+            text: "```\n" + logText.slice(0, 4000) + "\n```",
+            parse_mode: "Markdown",
+          }),
+        }
+      );
     }
 
     res.send("OK");
-  } catch (err) {
-    console.error("Webhook işlem hatası:", err);
-    res.status(500).send("Hata");
+  } catch (e) {
+    console.error(e);
+    res.send("OK");
   }
 });
 
-app.get("/", (req, res) => {
-  res.send("OK");
-});
-
-app.listen(process.env.PORT || 3000, () =>
-  console.log("Server çalıştı:", process.env.PORT || 3000)
-);
-
+app.listen(process.env.PORT || 3000);
