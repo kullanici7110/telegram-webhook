@@ -1,27 +1,27 @@
 // index.js
-// Render + Node.js v22 uyumlu
-// Telegram log + WhatsApp "selam" -> "selam"
-// await HATASI YOK (async fonksiyon içinde)
+// TEMİZ + ÇALIŞAN SÜRÜM
+// Node.js v22 / Render / CommonJS uyumlu
+// Telegram log + WhatsApp "selam" → "selam"
 
 const express = require("express");
 const app = express();
 
-// CommonJS fetch
-const fetch = (...args) => import("node-fetch").then(({ default: fetch }) => fetch(...args));
+// CommonJS için fetch (node-fetch)
+const fetch = (...args) => import("node-fetch").then(m => m.default(...args));
 
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
-// Telegram
+// Telegram env
 const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
 const BOT_TOKEN = process.env.BOT_TOKEN;
 
-// WAWP WhatsApp
+// WhatsApp (WAWP) env
 const INSTANCE_ID = process.env.INSTANCE_ID;
 const ACCESS_TOKEN = process.env.ACCESS_TOKEN;
 
-// WhatsApp mesaj gönderme (async FONKSİYON)
+// WhatsApp mesaj gönderme
 async function sendWhatsApp(chatId, message) {
   const res = await fetch("https://wawp.net/wp-json/awp/v1/send", {
     method: "POST",
@@ -29,12 +29,67 @@ async function sendWhatsApp(chatId, message) {
     body: new URLSearchParams({
       instance_id: INSTANCE_ID,
       access_token: ACCESS_TOKEN,
-      chatId,
-      message,
+      chatId: chatId,
+      message: message,
     }),
   });
 
   return res.status;
+}
+
+// WEBHOOK
+app.post("/webhook", async (req, res) => {
+  try {
+    const data = req.body;
+
+    console.log("GELEN VERİ:", JSON.stringify(data, null, 2));
+
+    /* -------- TELEGRAM LOG -------- */
+    if (ADMIN_CHAT_ID && BOT_TOKEN) {
+      const filteredData = {
+        event: data.event,
+        timestamp: data.timestamp,
+        user: data.metadata,
+        me: data.me,
+        message: data.payload,
+        environment: data.environment,
+      };
+
+      const logText = JSON.stringify(filteredData, null, 2);
+
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: ADMIN_CHAT_ID,
+          text: "```\n" + logText.slice(0, 4000) + "\n```",
+          parse_mode: "Markdown",
+        }),
+      });
+    }
+
+    /* -------- WHATSAPP AUTO REPLY -------- */
+    if (data && data.message && data.message.fromMe === false) {
+      const text = String(data.message.body || "").toLowerCase().trim();
+      const chatId = data.message.from;
+
+      if (text === "selam" && INSTANCE_ID && ACCESS_TOKEN) {
+        await sendWhatsApp(chatId, "selam");
+      }
+    }
+
+    res.send("OK");
+  } catch (err) {
+    console.error("Webhook hata:", err);
+    res.status(500).send("ERR");
+  }
+});
+
+app.get("/", (req, res) => res.send("OK"));
+
+app.listen(PORT, () => {
+  console.log("Server çalışıyor:", PORT);
+});  return res.status;
 }
 
 // Webhook handler (ASYNC)
