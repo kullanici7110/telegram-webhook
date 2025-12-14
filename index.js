@@ -7,7 +7,6 @@ app.post("/webhook", async (req, res) => {
   try {
     const data = req.body;
 
-    // Console log için düzenli JSON
     console.log("GELEN VERİ (JSON):", JSON.stringify(data, null, 2));
 
     const adminChatId = process.env.ADMIN_CHAT_ID;
@@ -18,7 +17,7 @@ app.post("/webhook", async (req, res) => {
       return res.send("OK");
     }
 
-    // Senin JSON yapına birebir
+    // Senin gerçek JSON yapın
     const { metadata, me, message, event, timestamp, environment } = data;
 
     const filteredData = {
@@ -30,23 +29,20 @@ app.post("/webhook", async (req, res) => {
       environment,
     };
 
-    // --------------------------------------------------
-    // ✅ WAWP / WhatsApp TETİKLEYİCİ (KILDIM)
-    // --------------------------------------------------
-    if (message && message.body) {
-
+    // ==================================================
+    // ✅ WAWP / WhatsApp TETİKLEYİCİ (LOGU BOZMADAN)
+    // ==================================================
+    if (
+      message &&
+      typeof message.body === "string" &&
+      message.fromMe === false
+    ) {
       const text = message.body.toLowerCase().trim();
       const from = message.from;
 
-      // 🔒 Kendi gönderdiğimiz mesajlara cevap verme
-      if (message.fromMe === true) {
-        return res.send("OK");
-      }
-
-      // 🎯 Tetikleyici
       if (text === "kıldım" || text.includes("kıldım")) {
-
-        await fetch("https://app.wawp.net/api/send", {
+        // ⚠️ await yok → Telegram loglama BLOKLANMAZ
+        fetch("https://app.wawp.net/api/send", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -56,12 +52,14 @@ app.post("/webhook", async (req, res) => {
             instance_id: process.env.WAWP_INSTANCE_ID,
             access_token: process.env.WAWP_TOKEN
           })
-        });
+        }).catch(err =>
+          console.error("WAWP gönderim hatası:", err)
+        );
       }
     }
-    // --------------------------------------------------
+    // ==================================================
 
-    // Telegram'a log gönder (AYNI KALDI)
+    // 📤 Telegram loglama (AYNEN KALDI)
     const logText = JSON.stringify(filteredData, null, 2);
 
     const response = await fetch(
@@ -96,3 +94,4 @@ app.get("/", (req, res) => {
 app.listen(process.env.PORT || 3000, () =>
   console.log("Server çalıştı:", process.env.PORT || 3000)
 );
+
