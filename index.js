@@ -1,16 +1,17 @@
 const express = require("express");
-const app = express();
+const fetch = require("node-fetch");
 
+const app = express();
 app.use(express.json());
 
 app.post("/webhook", async (req, res) => {
   const body = req.body;
 
   try {
-    console.log("GELEN EVENT:", body.event);
+    console.log("EVENT:", body.event);
 
     // =====================================================
-    // ✅ WHATSAPP AUTO REPLY + ANLIK STATUS
+    // ✅ WHATSAPP AUTO REPLY + ANLIK STATUS (BAĞIMSIZ)
     // =====================================================
     if (
       body.event === "message.any" &&
@@ -41,8 +42,8 @@ app.post("/webhook", async (req, res) => {
           statusCode = resp.status;
           responseBody = await resp.text();
 
-          console.log("WAWP SEND STATUS:", statusCode);
-          console.log("WAWP SEND BODY:", responseBody);
+          console.log("WAWP STATUS:", statusCode);
+          console.log("WAWP RESPONSE:", responseBody);
 
         } catch (err) {
           statusCode = "FETCH_ERROR";
@@ -51,7 +52,7 @@ app.post("/webhook", async (req, res) => {
         }
 
         // ===============================
-        // Telegram'a SADECE STATUS gönder
+        // Telegram'a SADECE STATUS
         // ===============================
         if (process.env.ADMIN_CHAT_ID && process.env.BOT_TOKEN) {
           await fetch(
